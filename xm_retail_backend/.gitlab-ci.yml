@@ -1,0 +1,33 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  IMAGE_NAME: "kondalu98/gitnodejs"
+
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  script:
+    - docker build -t $IMAGE_NAME .
+    - docker push $IMAGE_NAME:latest
+  only:
+    - main
+
+deploy:
+  stage: deploy
+  image: docker:latest
+  before_script:
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+  script:
+    - docker pull $IMAGE_NAME:latest
+    - docker rm -f nodejs-app-container || true
+    - docker run -d -p 4000:4000 --name nodejs-app-container -e MONGO_PASSWORD="$MONGO_PASSWORD" $IMAGE_NAME
+  only:
+    - main
+  tags:
+    - sample
