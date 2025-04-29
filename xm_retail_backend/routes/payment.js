@@ -16,10 +16,10 @@ const razorpayInstance = new Razorpay({
 
 // ✅ ROUTE 1: Create Order
 router.post('/order', async (req, res) => {
-    const { amount } = req.body;  // ✅ Extract amount properly
+    const { amount,currency } = req.body;  // ✅ Extract amount properly
 
     try {
-        if (!amount || isNaN(amount)) {
+        if (!amount || isNaN(amount) ) {
             return res.status(400).json({ message: "Valid amount is required." });
         }
 
@@ -45,35 +45,6 @@ router.post('/order', async (req, res) => {
     }
 });
 
-
-
-// router.post('/order', async (req, res) => {
-//     const amount = 10000;  // ✅ Hardcoded amount
-
-//     try {
-//         if (!amount) {
-//             return res.status(400).json({ message: "Amount is required." });  // ✅ Remove currency from the message
-//         }
-
-//         const options = {
-//             amount: Number(amount * 100),  // Convert to paise
-//             currency: "INR",               // ✅ Hardcoded currency
-//             receipt: crypto.randomBytes(10).toString("hex"),
-//         };
-
-//         const order = await razorpayInstance.orders.create(options);
-//         console.log("Order created:", order);
-
-//         res.status(201).json({
-//             success: true,
-//             data: order,
-//         });
-
-//     } catch (error) {
-//         console.error("Order creation failed:", error);
-//         res.status(500).json({ message: "Internal Server Error!" });
-//     }
-// });
 
 // ✅ ROUTE 2: Verify Payment
 router.post('/verify', async (req, res) => {

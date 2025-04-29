@@ -9,11 +9,11 @@ import dotenv from 'dotenv';
 import errorHandler from "./middleware/errorMiddleware.js";
 import express from "express";
 import imageRoutes from "./routes/imageRoutes.js";
-import mongoose from "mongoose";
 import path from "path";
 import userRoutes from "./routes/userRoutes.js";
 import payment from "./routes/payment.js"
-import woohooRoutes from "./routes/woohooRoutes.js"
+import woohooRoutes from "./routes/woohooRoutes.js";
+import orderRoutes from "./routes/orderroutes.js"; // Ensure the file extension is included
 
 const app = express();
 const PORT = 4000;
@@ -44,6 +44,8 @@ app.use((err, req, res, next) => {
   res.status(500).send("Internal Server Error!");
 });
 
+//order routes
+app.use("/api/order",orderRoutes);
 
 //for nginx
 app.use('/admin/dashboard', (req, res) => {
