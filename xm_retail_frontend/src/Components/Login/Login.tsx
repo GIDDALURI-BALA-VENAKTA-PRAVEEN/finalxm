@@ -1,26 +1,29 @@
 import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import enterimg from "./assets/otp.jpeg";
 import logo from "./assets/logo.jpeg";
 import shop from "./assets/login_home.jpeg";
-import { useNavigate } from "react-router-dom";
 
 export default function Login() {
+  const [loginMethod, setLoginMethod] = useState<"email" | "mobile">("email");
   const [email, setEmail] = useState<string>("");
-  const [name, setName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
+  const [name, setName] = useState<string>("");
+  const [userEmail, setUserEmail] = useState<string>(""); // For mobile registration
+  const [userPhone, setUserPhone] = useState<string>(""); // For email registration
   const [pincode, setPincode] = useState<string>("");
-
   const [showOtpScreen, setShowOtpScreen] = useState<boolean>(false);
   const [showRegistrationForm, setShowRegistrationForm] = useState<boolean>(false);
-
   const [otp, setOtp] = useState<string[]>(["", "", "", "", "", ""]);
   const [isOtpInvalid, setIsOtpInvalid] = useState<boolean>(false);
   const [timer, setTimer] = useState<number>(60);
   const [showResendButton, setShowResendButton] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const apiUrl = import.meta.env.VITE_APP_SERVER_BASE_URL;
+  // alert(apiUrl);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -32,9 +35,9 @@ export default function Login() {
   useEffect(() => {
     let countdown: number;
     if (showOtpScreen) {
-      setTimer(30);
+      setTimer(60);
       setShowResendButton(false);
-      countdown = setInterval(() => {
+      countdown = window.setInterval(() => {
         setTimer((prev) => {
           if (prev === 1) {
             clearInterval(countdown);
@@ -49,16 +52,29 @@ export default function Login() {
   }, [showOtpScreen]);
 
   const requestOtp = async (): Promise<void> => {
-    if (!email.includes("@") || !email.includes(".")) {
+    const payload = loginMethod === "email" ? { email } : { phone };
+
+    if (loginMethod === "email" && (!email.includes("@") || !email.includes("."))) {
       alert("Please enter a valid email!");
       return;
     }
+
+    if (loginMethod === "mobile" && !/^\d{10,15}$/.test(phone)) {
+      alert("Please enter a valid 10-15 digit mobile number!");
+      return;
+    }
+
+    setIsLoading(true);
     setShowOtpScreen(true);
+
     try {
-      await axios.post(`${apiUrl}/api/auth/send-otp`, { email });
-    } catch (error) {
+      await axios.post(`${apiUrl}/api/auth/send-otp`, payload);
+    } catch (error: any) {
       console.error("Send OTP Error:", error);
-      alert("Error sending OTP. Check backend logs.");
+      alert(error.response?.data?.message || "Error sending OTP. Please try again.");
+      setShowOtpScreen(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -90,48 +106,57 @@ export default function Login() {
     if (enteredOtp.length !== 6) {
       setIsOtpInvalid(true);
       setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
       return;
     }
-  
+
+    setIsLoading(true);
+    const payload = loginMethod === "email"
+      ? { email, otp: enteredOtp }
+      : { phone, otp: enteredOtp };
+
     try {
-      const response = await axios.post(`${apiUrl}/api/auth/verify-otp`, {
-        email,
-        otp: enteredOtp,
-      });
-  
+      const response = await axios.post(`${apiUrl}/api/auth/verify-otp`, payload);
       if (response.data.message) {
-        // Check if the user is new
         const { isNewUser, user, token } = response.data;
-  
+        
+        // Store temp user data in localStorage
+        localStorage.setItem("tempUser", JSON.stringify(user));
+        localStorage.setItem("tempToken", token);
+
         if (isNewUser) {
-          // If the user is new, show the registration form
-          // navigate("/home");
           setShowRegistrationForm(true);
+          // Clear form fields
+          setName("");
+          setUserEmail("");
+          setUserPhone("");
+          setPincode("");
         } else {
-          // If the user is not new, save the user and navigate
           localStorage.setItem("user", JSON.stringify(user));
-          localStorage.setItem("token", token); // Save the token
+          localStorage.setItem("token", token);
           navigate("/home");
         }
-      } else {
-        setIsOtpInvalid(true);
-        setOtp(["", "", "", "", "", ""]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Verify OTP Error:", error);
       setIsOtpInvalid(true);
       setOtp(["", "", "", "", "", ""]);
+      inputRefs.current[0]?.focus();
+      alert(error.response?.data?.message || "Invalid OTP. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
   };
-  
 
   const handleResendOtp = (): void => {
     requestOtp();
-    setTimer(30);
-    const countdowns = setInterval(() => {
+    setTimer(60);
+    setOtp(["", "", "", "", "", ""]);
+    inputRefs.current[0]?.focus();
+    const countdown = setInterval(() => {
       setTimer((prev) => {
         if (prev === 1) {
-          clearInterval(countdowns);
+          clearInterval(countdown);
           setShowResendButton(true);
           return 0;
         }
@@ -143,43 +168,60 @@ export default function Login() {
 
   const handleRegistrationSubmit = async (): Promise<void> => {
     if (!name.trim()) {
-      alert("Please enter your name.");
-      return;
-    }
-    if (!/^\d{10}$/.test(phone)) {
-      alert("Please enter a valid 10-digit phone number.");
-      return;
-    }
-    if (!/^\d{6}$/.test(pincode)) {
-      alert("Please enter a valid 6-digit pincode.");
+      alert("Please enter your name");
       return;
     }
 
+    // Validate email if mobile login
+    if (loginMethod === "mobile" && (!userEmail || !userEmail.includes("@"))) {
+      alert("Please enter a valid email address");
+      return;
+    }
+
+    // Validate phone if email login
+    if (loginMethod === "email" && (!userPhone || !/^\d{10,15}$/.test(userPhone))) {
+      alert("Please enter a valid 10-15 digit phone number");
+      return;
+    }
+
+    setIsLoading(true);
+    
     try {
-      const response = await fetch(`${apiUrl}/api/user/save-registration`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, name, phone, pincode }),
-      });
+      const tempUser = JSON.parse(localStorage.getItem("tempUser") || "{}");
+      if (!tempUser?.id) {
+        throw new Error("Session expired. Please login again.");
+      }
 
-      if (!response.ok) throw new Error("Failed to save registration details");
-
-      const data = await response.json();
-      const userData = {
-        email: data.user.email,
-        name: data.user.name,
-        phone: data.user.phone,
-        pincode: data.user.pincode,
-        token: "authenticated"
+      const payload = {
+        name: name.trim(),
+        userId: tempUser.id,
+        ...(loginMethod === "mobile" && { email: userEmail }), // Email for mobile login
+        ...(loginMethod === "email" && { phone: userPhone }),  // Phone for email login
+        ...(pincode && { pincode })
       };
 
-      localStorage.setItem("user", JSON.stringify(userData));
-      navigate("/home");
-    } catch (error) {
-      console.error("Registration submit error:", error);
-      alert("Error saving registration details. Please try again.");
+      const response = await axios.post("http://localhost:4000/api/auth/save-registration", payload);
+
+      if (response.data.success) {
+        localStorage.setItem("user", JSON.stringify(response.data.user));
+        localStorage.setItem("token", localStorage.getItem("tempToken") || "");
+        localStorage.removeItem("tempUser");
+        localStorage.removeItem("tempToken");
+        navigate("/home");
+      } else {
+        throw new Error(response.data.message || "Registration failed");
+      }
+    } catch (error: any) {
+      console.error("Registration error:", error);
+      
+      if (error.response?.data?.details) {
+        const errors = Object.values(error.response.data.details).filter(Boolean);
+        alert(errors.join('\n'));
+      } else {
+        alert(error.response?.data?.message || error.message || "Error saving registration details");
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -195,27 +237,61 @@ export default function Login() {
               <img src={shop} alt="Login Illustration" className="h-32 w-auto object-cover rounded-lg" />
             </div>
             <h2 className="text-lg font-semibold">Welcome</h2>
-            <p className="text-gray-500 mb-4">Login with your email</p>
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && requestOtp()}
-              className="w-full border border-gray-300 rounded-lg p-2 text-md outline-none"
-            />
+            <p className="text-gray-500 mb-4">Login with Email or Mobile</p>
+            <div className="flex justify-center space-x-2 mb-4">
+              <button
+                onClick={() => setLoginMethod("email")}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold ${loginMethod === "email" ? "bg-black text-white" : "bg-gray-200 text-black"}`}
+              >
+                Email
+              </button>
+              <button
+                onClick={() => setLoginMethod("mobile")}
+                className={`px-4 py-2 rounded-lg text-sm font-semibold ${loginMethod === "mobile" ? "bg-black text-white" : "bg-gray-200 text-black"}`}
+              >
+                Mobile
+              </button>
+            </div>
+            {loginMethod === "email" ? (
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && requestOtp()}
+                className="w-full border border-gray-300 rounded-lg p-2 text-md outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            ) : (
+              <input
+                type="tel"
+                placeholder="Enter your mobile number"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && requestOtp()}
+                className="w-full border border-gray-300 rounded-lg p-2 text-md outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            )}
             <button
               onClick={requestOtp}
-              className="w-full bg-black text-white font-semibold py-2 rounded-lg mt-4"
+              disabled={isLoading}
+              className={`w-full bg-black text-white font-semibold py-2 rounded-lg mt-4 ${isLoading ? "opacity-70 cursor-not-allowed" : ""}`}
             >
-              Request OTP →
+              {isLoading ? "Sending..." : "Request OTP →"}
             </button>
           </>
         ) : (
           <div>
-            <button onClick={() => setShowOtpScreen(false)} className="text-2xl mb-2">←</button>
+            <button 
+              onClick={() => setShowOtpScreen(false)} 
+              className="text-2xl mb-2 hover:text-blue-500 transition-colors"
+              disabled={isLoading}
+            >
+              ←
+            </button>
             <h2 className="text-lg font-semibold">OTP Verification</h2>
-            <p className="text-gray-500">OTP sent to {email}</p>
+            <p className="text-gray-500">
+              OTP sent to {loginMethod === "email" ? email : `+91${phone}`}
+            </p>
             <div className="flex justify-center my-4">
               <img src={enterimg} alt="OTP Illustration" className="h-32 w-auto object-cover rounded-lg" />
             </div>
@@ -229,25 +305,38 @@ export default function Login() {
                   value={digit}
                   onChange={(e) => handleOtpChange(index, e)}
                   onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                  className={`w-12 h-12 border rounded-lg text-center text-lg font-semibold outline-none focus:ring-2 focus:ring-blue-500 ${isOtpInvalid ? "border-red-500" : ""}`}
+                  disabled={isLoading}
+                  className={`w-12 h-12 border rounded-lg text-center text-lg font-semibold outline-none focus:ring-2 focus:ring-blue-500 ${
+                    isOtpInvalid ? "border-red-500" : "border-gray-300"
+                  } ${isLoading ? "bg-gray-100" : ""}`}
                 />
               ))}
             </div>
-            {isOtpInvalid && <p className="text-red-500 text-sm">Invalid OTP. Please try again.</p>}
-            <p className="text-gray-600 text-sm mt-2">OTP expires in: {timer}s</p>
+            {isOtpInvalid && (
+              <p className="text-red-500 text-sm">Invalid OTP. Please try again.</p>
+            )}
+            <p className="text-gray-600 text-sm mt-2">
+              OTP expires in: {timer}s
+            </p>
             {showResendButton ? (
               <button
                 onClick={handleResendOtp}
-                className="w-full bg-blue-500 text-white font-semibold py-2 rounded-lg mt-2"
+                disabled={isLoading}
+                className={`w-full bg-blue-500 text-white font-semibold py-2 rounded-lg mt-2 ${
+                  isLoading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
               >
                 Resend OTP 🔄
               </button>
             ) : (
               <button
                 onClick={verifyOtp}
-                className="w-full bg-green-500 text-white font-semibold py-2 rounded-lg mt-2"
+                disabled={isLoading}
+                className={`w-full bg-green-500 text-white font-semibold py-2 rounded-lg mt-2 ${
+                  isLoading ? "opacity-70 cursor-not-allowed" : ""
+                }`}
               >
-                Verify OTP ✔
+                {isLoading ? "Verifying..." : "Verify OTP ✔"}
               </button>
             )}
           </div>
@@ -259,33 +348,59 @@ export default function Login() {
         <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
           <div className="bg-white p-6 rounded-lg shadow-lg w-80 text-center">
             <h2 className="text-lg font-bold mb-2">Complete Registration</h2>
-            <p className="text-gray-500 mb-4">Hi {email}, please complete your registration.</p>
+            <p className="text-gray-500 mb-4">
+              Hi {loginMethod === "email" ? email : phone}, please complete your registration.
+            </p>
             <input
               type="text"
               placeholder="Enter your name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2 text-md mb-2"
+              className="w-full border border-gray-300 rounded-lg p-2 text-md mb-2 focus:ring-2 focus:ring-blue-500 outline-none"
+              required
             />
+            
+            {/* Show email field for mobile logins */}
+            {loginMethod === "mobile" && (
+              <input
+                type="email"
+                placeholder="Enter your email"
+                value={userEmail}
+                onChange={(e) => setUserEmail(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2 text-md mb-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                required
+              />
+            )}
+            
+            {/* Show phone field for email logins */}
+            {loginMethod === "email" && (
+              <input
+                type="tel"
+                placeholder="Enter your phone number"
+                value={userPhone}
+                onChange={(e) => setUserPhone(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg p-2 text-md mb-2 focus:ring-2 focus:ring-blue-500 outline-none"
+                required
+              />
+            )}
+            
             <input
               type="text"
-              placeholder="Enter your phone number"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2 text-md mb-2"
-            />
-            <input
-              type="text"
-              placeholder="Enter your pincode"
+              placeholder="Enter your pincode (optional)"
               value={pincode}
               onChange={(e) => setPincode(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg p-2 text-md mb-4"
+              className="w-full border border-gray-300 rounded-lg p-2 text-md mb-4 focus:ring-2 focus:ring-blue-500 outline-none"
+              maxLength={6}
             />
+            
             <button
               onClick={handleRegistrationSubmit}
-              className="w-full bg-black text-white font-semibold py-2 rounded-lg"
+              disabled={isLoading}
+              className={`w-full bg-black text-white font-semibold py-2 rounded-lg ${
+                isLoading ? "opacity-70 cursor-not-allowed" : ""
+              }`}
             >
-              Submit Registration
+              {isLoading ? "Submitting..." : "Submit Registration"}
             </button>
           </div>
         </div>

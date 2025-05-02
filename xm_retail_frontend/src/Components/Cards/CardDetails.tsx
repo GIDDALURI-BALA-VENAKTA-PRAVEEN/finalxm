@@ -4,6 +4,7 @@ import SimilarCards from "./SimilarCards";
 import axios from "axios";
 import toast, { Toaster } from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+
 interface CardDetailsType {
   _id: string;
   name: string;
@@ -16,11 +17,7 @@ interface CardDetailsType {
   validityMonths: number;
 }
 
-
 const CardDetails = () => {
-  
-
- 
   const { id } = useParams();
   const [card, setCard] = useState<CardDetailsType | null>(null);
   const [similarCards, setSimilarCards] = useState<CardDetailsType[]>([]);
@@ -33,15 +30,15 @@ const CardDetails = () => {
   const apiUrl = import.meta.env.VITE_APP_SERVER_BASE_URL;
   const razorpayKey = import.meta.env.VITE_APP_RAZORPAY_KEY_ID;
 
-  // Handle Amount Change
   const handleAmountChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedAmount(Number(event.target.value) || null);
   };
 
-  // Model close bnt
-  const closeModal = () => { setShowRedeemModal(false);  setShowNotesModal(false);};
+  const closeModal = () => {
+    setShowRedeemModal(false);
+    setShowNotesModal(false);
+  };
 
-  // Fetch Card Details
   const fetchCard = async () => {
     try {
       const response = await axios.get(`${apiUrl}/api/cards/${id}`);
@@ -54,7 +51,6 @@ const CardDetails = () => {
     }
   };
 
-  // Fetch Similar Cards
   const fetchSimilarCards = async (category: string) => {
     try {
       const response = await axios.get(`${apiUrl}/api/cards/category/${category}`);
@@ -78,10 +74,8 @@ const CardDetails = () => {
   if (error) return <p className="text-center text-red-500 mt-10">{error}</p>;
   if (!card) return <p className="text-center text-gray-500 mt-10">No card found.</p>;
 
-// Here if we select 10000=>   10000 * 100-45/100 ==> 5500
   const discountedAmount = selectedAmount ? (selectedAmount * (100 - Number(card.cashback))) / 100 : 0;
 
-  // Handle Payment
   const handlePayment = async () => {
     if (!selectedAmount) {
       toast.error("Please select an amount before proceeding.");
@@ -89,12 +83,10 @@ const CardDetails = () => {
     }
 
     try {
-      
-      const response = await axios.post(`${apiUrl}/api/payment/order`, {
-        amount: discountedAmount ,
+      const response = await axios.post(`${apiUrl}/api/payment/create-order`, {
+        amount: discountedAmount,
         currency: "INR",
       });
-      console.log(response.data);
 
       const { id: orderId, amount } = response.data.data;
       const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
@@ -111,9 +103,9 @@ const CardDetails = () => {
           toast.success("Payment successful!");
         },
         prefill: {
-          name: storedUser.name||"Bala Venkata Praveen Giddaluri",
+          name: storedUser.name || "Bala Venkata Praveen Giddaluri",
           email: storedUser.email,
-          contact: storedUser.phone
+          contact: storedUser.phone,
         },
         theme: {
           color: "#f97316",
@@ -129,22 +121,20 @@ const CardDetails = () => {
           document.body.appendChild(script);
         });
       };
-      
+
       const isScriptLoaded = await loadRazorpay("https://checkout.razorpay.com/v1/checkout.js");
-    
+
       if (!isScriptLoaded) {
         toast.error("Failed to load Razorpay.");
         return;
       }
-  
+
       const razorpay = new (window as any).Razorpay(razorpayOptions);
       razorpay.open();
-  
-      
+
     } catch (error) {
       console.error("Error creating order:", error);
       toast.error("Failed to initiate payment.");
-
     }
   };
 
@@ -169,7 +159,6 @@ const CardDetails = () => {
             className="w-full h-64 object-contain rounded-lg border"
           />
           <div className="text-sm text-gray-600 space-y-1 text-center lg:text-left">
-            
             <p>Vendor: <span className="font-medium">xmretail</span></p>
             <p>Valid for up to <span className="font-medium">{card.validityMonths} months</span></p>
           </div>
@@ -215,8 +204,6 @@ const CardDetails = () => {
             <div className="bg-gray-100 p-4 rounded-lg">
               <p className="text-gray-600">You pay only</p>
               <p className="text-2xl font-bold text-gray-800">₹ {discountedAmount.toFixed(2)}</p>
-              
-              {/* Buy Now Button */}
               <button
                 onClick={handlePayment}
                 className="bg-green-500 text-white px-6 py-2 rounded-lg shadow hover:bg-green-600 mt-4"
@@ -228,8 +215,8 @@ const CardDetails = () => {
         </div>
       </div>
 
-           {/* Redeem Modal */}
-           <AnimatePresence>
+      {/* Redeem Modal */}
+      <AnimatePresence>
         {showRedeemModal && (
           <motion.div
             className="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center z-50"
@@ -247,35 +234,18 @@ const CardDetails = () => {
               {/* Close Button */}
               <button
                 onClick={closeModal}
-                className="absolute top-3 right-3 text-gray-600 hover:text-red-500 text-2xl"
+                className="absolute top-3 right-3 text-gray-600 text-2xl"
               >
                 &times;
               </button>
-
-              <h2 className="text-2xl font-bold mb-4">How to Redeem</h2>
-              <p className="text-gray-600">
-                Follow the steps below to redeem your gift card:
-              </p>
-              <ul className="list-disc pl-5 mt-4 space-y-2">
-                <li>Go to the vendor's website.</li>
-                <li>Select the products you want.</li>
-                <li>Enter the gift card code at checkout.</li>
-                <li>Enjoy your discount!</li>
-              </ul>
-              <button
-              onClick={() => setShowRedeemModal(false)}
-              className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600"
-            >
-              Close
-            </button>
-
-
+              <h3 className="text-2xl font-semibold mb-4">How to Redeem</h3>
+              <p>Redeem your gift card by visiting the vendor's website...</p>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Points to Note Modal */}
+      {/* Notes Modal */}
       <AnimatePresence>
         {showNotesModal && (
           <motion.div
@@ -294,34 +264,22 @@ const CardDetails = () => {
               {/* Close Button */}
               <button
                 onClick={closeModal}
-                className="absolute top-3 right-3 text-gray-600 hover:text-red-500 text-2xl"
+                className="absolute top-3 right-3 text-gray-600 text-2xl"
               >
                 &times;
               </button>
-
-              <h2 className="text-2xl font-bold mb-4">Points to Note</h2>
-              <p className="text-gray-600">
-                Here are some important points to consider:
-              </p>
-              <ul className="list-disc pl-5 mt-4 space-y-2">
-                <li>The gift card is valid for 12 months.</li>
-                <li>It cannot be exchanged for cash.</li>
-                <li>Only one gift card can be used per order.</li>
-                <li>Non-refundable after purchase.</li>
+              <h3 className="text-2xl font-semibold mb-4">Points to Note</h3>
+              <ul className="space-y-2">
+                <li>Gift card is valid for 12 months from the date of purchase.</li>
+                <li>Cashback is not applicable on discounted products.</li>
               </ul>
-              <button
-              onClick={() => setShowNotesModal(false)}
-              className="w-full bg-orange-500 text-white py-2 rounded-lg hover:bg-orange-600"
-            >
-              Close
-            </button>
-
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <SimilarCards category={card.category} currentCardId={card._id} />
+      {/* Similar Cards */}
+      <SimilarCards cards={similarCards} />
     </div>
   );
 };

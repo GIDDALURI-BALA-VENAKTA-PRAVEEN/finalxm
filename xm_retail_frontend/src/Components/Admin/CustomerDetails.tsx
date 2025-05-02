@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 
-// Define the type for the customer
 interface Customer {
   id: number;
   name: string;
@@ -9,54 +8,95 @@ interface Customer {
 }
 
 const CustomerData: React.FC = () => {
-  // State for holding customer data and error message
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [error, setError] = useState<string>("");
+  const [loading, setLoading] = useState<boolean>(true);
 
-  // Fetch customer data when the component mounts
   useEffect(() => {
     const fetchCustomerData = async () => {
       try {
-        const response = await fetch("http://localhost:4000/cust/data/"); // Your backend endpoint
-
-        // Parse the response to JSON
+        const response = await fetch("http://localhost:4000/cust/data/");
         const data = await response.json();
 
         if (data.success) {
-          setCustomers(data.data); // Set the fetched customer data
+          setCustomers(data.data);
         } else {
-          setError("No customers found"); // Set error if no data
+          setError("No customers found.");
         }
       } catch (err) {
-        setError("Error fetching data"); // Set error message if fetch fails
+        setError("Error fetching data.");
         console.error("Error:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    fetchCustomerData(); // Call the function to fetch data
-  }, []); // Empty array to ensure it runs only once when component mounts
+    fetchCustomerData();
+  }, []);
 
   return (
-    <div>
-      <h1>Customer Data</h1>
+    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "2rem" }}>
+      <h2 style={{ textAlign: "center", marginBottom: "1.5rem", color: "#333" }}>
+        Customer List
+      </h2>
 
-      {/* If there's an error, display the error message */}
-      {error && <p>{error}</p>}
-
-      {/* If there are customers, display them */}
-      {customers.length > 0 ? (
-        <ul>
-          {customers.map((customer) => (
-            <li key={customer.id}>
-              <strong>{customer.name}</strong> - {customer.email} - {customer.phone}
-            </li>
-          ))}
-        </ul>
+      {loading ? (
+        <p style={{ textAlign: "center" }}>Loading customer data...</p>
+      ) : error ? (
+        <p style={{ textAlign: "center", color: "red" }}>{error}</p>
       ) : (
-        <p>No customer data available</p>
+        <div style={{ overflowX: "auto" }}>
+          <table
+            style={{
+              width: "100%",
+              borderCollapse: "collapse",
+              boxShadow: "0 0 10px rgba(0,0,0,0.1)",
+            }}
+          >
+            <thead style={{ backgroundColor: "#f4f4f4" }}>
+              <tr>
+                <th style={thStyle}>ID</th>
+                <th style={thStyle}>Name</th>
+                <th style={thStyle}>Email</th>
+                <th style={thStyle}>Phone</th>
+              </tr>
+            </thead>
+            <tbody>
+              {customers.map((customer, index) => (
+                <tr
+                  key={customer.id}
+                  style={{
+                    backgroundColor: index % 2 === 0 ? "#fff" : "#fafafa",
+                    transition: "background-color 0.3s",
+                  }}
+                >
+                  <td style={tdStyle}>{customer.id}</td>
+                  <td style={tdStyle}>{customer.name}</td>
+                  <td style={tdStyle}>{customer.email}</td>
+                  <td style={tdStyle}>{customer.phone}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );
+};
+
+// Styles
+const thStyle: React.CSSProperties = {
+  padding: "12px",
+  textAlign: "left",
+  borderBottom: "2px solid #ccc",
+  fontWeight: 600,
+  color: "#333",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: "10px 12px",
+  borderBottom: "1px solid #eee",
+  color: "#555",
 };
 
 export default CustomerData;

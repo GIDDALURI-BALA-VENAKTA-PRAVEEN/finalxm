@@ -1,3 +1,4 @@
+// utils/generateSignature.js
 import CryptoJS from 'crypto-js';
 
 // Utility to encode URI consistently
@@ -23,18 +24,13 @@ export const generateWoohooSignature = (url, method, clientSecret) => {
   const requestHttpMethod = method.toUpperCase();
   const dateAtClient = new Date().toISOString();
 
-  // Construct base string with dateAtClient
   const baseArray = [
     requestHttpMethod,
     url.includes("?") ? sortQueryParams(url) : fixedEncodedURIComponent(url),
-    dateAtClient,  // Include the date in the base string
   ];
 
   const baseString = baseArray.join("&");
-  console.log("Base String for Signature:", baseString);  // Log for debugging
-
   const signature = CryptoJS.HmacSHA512(baseString, clientSecret).toString();
-  console.log("Generated Signature:", signature);  // Log for debugging
 
   return { signature, dateAtClient };
 };

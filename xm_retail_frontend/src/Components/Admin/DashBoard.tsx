@@ -1,14 +1,15 @@
 // src/components/DashBoard.tsx
-import { FiHome, FiLogOut, FiMenu, FiTag, FiX } from "react-icons/fi";
+import { FiHome, FiLogOut, FiMenu, FiTag, FiX ,FiUser ,FiFileText} from "react-icons/fi";
 import { JSX, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Admin from "./Admin";
 import CardAdmin from "./CardAdmin";
-import CustomerDetails from "./CustomerDetails"; // New import
+import CustomerDetails from "./CustomerDetails"; 
+import {CustomerOrders} from "./CustomerOrders"; 
 
 export default function DashBoard(): JSX.Element {
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const [activeSection, setActiveSection] = useState<"home" | "coupons" | "customerDetails">("home");
+  const [activeSection, setActiveSection] = useState<"home" | "coupons" | "customerDetails"| "orders">("home");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -70,12 +71,13 @@ export default function DashBoard(): JSX.Element {
               <FiTag /> <span>Cards</span>
             </button>
           </li>
+         
           <li>
             <button
-              onClick={handleLogout}
+              onClick={() => setActiveSection("orders")}
               className="flex items-center space-x-2 w-full text-left p-2 hover:bg-red-600 rounded"
             >
-              <FiLogOut /> <span>Logout</span>
+              <FiFileText /> <span>OrderDetails</span>
             </button>
           </li>
           <li>
@@ -83,7 +85,15 @@ export default function DashBoard(): JSX.Element {
               onClick={() => setActiveSection("customerDetails")}
               className="flex items-center space-x-2 w-full text-left p-2 hover:bg-gray-700 rounded"
             >
-              <FiLogOut /> <span>Customer Details</span>
+              <FiUser /> <span>Customer Details</span>
+            </button>
+          </li>
+          <li>
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 w-full text-left p-2 hover:bg-red-600 rounded"
+            >
+              <FiLogOut /> <span>Logout</span>
             </button>
           </li>
         </ul>
@@ -97,13 +107,12 @@ export default function DashBoard(): JSX.Element {
           {isSidebarOpen ? <FiX /> : <FiMenu />}
         </button>
 
-        {activeSection === "home" ? (
-          <Admin />
-        ) : activeSection === "coupons" ? (
-          <CardAdmin />
-        ) : (
-          <CustomerDetails /> // Show customer details
-        )}
+        {activeSection === "home" ? (<Admin />) 
+        : activeSection === "coupons" ? (<CardAdmin />) 
+        : activeSection === "customerDetails" ?(<CustomerDetails /> )
+        : activeSection === "orders" ? (<CustomerOrders />) : (<Admin />)
+        }
+        
       </div>
     </div>
   );

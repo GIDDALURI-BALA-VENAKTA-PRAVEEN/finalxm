@@ -1,104 +1,281 @@
-import { User } from "../models/User.js"; // Sequelize User model
+import { User } from "../models/User.js";
 import jwt from "jsonwebtoken";
 import { createTransport } from "nodemailer";
+import twilio from "twilio";
+import dotenv from "dotenv";
 
-const otpStore = {}; // Temporary in-memory OTP store
-const SECRET_KEY = "your_secret_key"; // Move this to .env in production
+dotenv.config();
 
-// ✅ Configure Nodemailer
+const otpStore = {};
+const SECRET_KEY = process.env.JWT_SECRET;
+
+// Email transporter setup
 const transporter = createTransport({
   service: "gmail",
   auth: {
-    user: "mcsushma90@gmail.com", // Replace with your Gmail
-    pass: "uwqv vmdd wnxa btzg",   // Replace with app password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
-// ✅ Send OTP
+// Twilio client setup
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
+// Helper functions
+const formatPhoneNumber = (phone) => phone.replace(/\D/g, '').startsWith('+') ? phone.replace(/\D/g, '') : `+91${phone.replace(/\D/g, '')}`;
+
+const isValidPhoneNumber = (phone) => phone.replace(/\D/g, '').length >= 10;
+
+// Send OTP
 export const sendOtp = async (req, res) => {
-  const { email } = req.body;
-  if (!email) return res.status(400).json({ message: "Email is required" });
-
-  // Check if OTP has been sent recently (e.g., within 1 minute)
-  const lastOtpSent = otpStore[email] && otpStore[email].timestamp;
-  const now = Date.now();
-
-  if (lastOtpSent && now - lastOtpSent < 60000) { // 1 minute time window
-    return res.status(400).json({ message: "OTP already sent. Please wait before requesting again." });
-  }
-
   try {
+    const { email, phone } = req.body;
+
+    if (!email && !phone) {
+      return res.status(400).json({ message: "Email or phone is required" });
+    }
+
+    const identifier = email || phone;
+    const now = Date.now();
+
+    // Throttle OTP sending
+    if (otpStore[identifier]?.timestamp && now - otpStore[identifier].timestamp < 60000) {
+      return res.status(400).json({ message: "OTP already sent. Please wait a minute." });
+    }
+
     const otp = Math.floor(100000 + Math.random() * 900000);
-    otpStore[email] = { otp, timestamp: now }; // Store OTP and the timestamp
+    otpStore[identifier] = { otp, timestamp: now };
 
-    console.log(`✅ Sending OTP ${otp} to ${email}`);
+    if (email) {
+      if (!email.includes('@') || !email.includes('.')) {
+        return res.status(400).json({ message: "Please enter a valid email address" });
+      }
 
-    await transporter.sendMail({
-      from: "mcsushma90@gmail.com",
-      to: email,
-      subject: "Your OTP Code",
-      text: `Your OTP is: ${otp}. It will expire in 10 minutes.`,
-    });
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: email,
+        subject: "Your OTP Code",
+        text: `Your OTP is: ${otp}. It expires in 10 minutes.`,
+      });
 
-    res.status(200).json({ message: "OTP sent successfully" });
+      console.log(`✅ OTP ${otp} sent to email: ${email}`);
+      return res.status(200).json({ message: "OTP sent to email" });
+    } else {
+      if (!isValidPhoneNumber(phone)) {
+        return res.status(400).json({ message: "Please enter a valid phone number" });
+      }
+
+      const formattedPhone = formatPhoneNumber(phone);
+
+      try {
+        await twilioClient.messages.create({
+          body:` Your OTP is: ${otp}. It expires in 10 minutes.`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: formattedPhone,
+        });
+
+        console.log(`✅ OTP ${otp} sent to phone: ${formattedPhone}`);
+        return res.status(200).json({ message: "OTP sent to phone" });
+      } catch (twilioError) {
+        console.error("Twilio error:", twilioError);
+        return res.status(400).json({ 
+          message: twilioError.code === 21211 
+            ? "Invalid phone number format. Include country code (e.g., +919876543210)" 
+            : "Failed to send SMS",
+          error: twilioError.message 
+        });
+      }
+    }
   } catch (error) {
     console.error("❌ Error sending OTP:", error);
-    res.status(500).json({ message: "Failed to send OTP", error: error.message });
+    return res.status(500).json({ message: "Failed to send OTP", error: error.message });
   }
 };
 
-// ✅ Verify OTP
+// Verify OTP
 export const verifyOtp = async (req, res) => {
-  const { email, otp } = req.body;
+  try {
+    const { email, phone, otp } = req.body;
+    const identifier = email || phone;
 
-  if (!email || !otp)
-    return res.status(400).json({ message: "Email and OTP are required" });
+    if (!identifier || !otp) {
+      return res.status(400).json({ message: "Email/phone and OTP are required" });
+    }
 
-  console.log(`🔍 Verifying OTP for ${email}: Received ${otp}, Stored ${otpStore[email]?.otp}`);
+    const record = otpStore[identifier];
+    if (!record) {
+      return res.status(400).json({ message: "OTP not found or expired" });
+    }
 
-  if (!otpStore[email])
-    return res.status(400).json({ message: "OTP expired or not found" });
+    const { otp: storedOtp, timestamp } = record;
 
-  const storedOtp = otpStore[email].otp;
-  const timestamp = otpStore[email].timestamp;
-  const now = Date.now();
+    if (Date.now() - timestamp > 10 * 60 * 1000) {
+      delete otpStore[identifier];
+      return res.status(400).json({ message: "OTP expired" });
+    }
 
-  // Check OTP expiration (10 minutes)
-  if (now - timestamp > 600000) {
-    delete otpStore[email];
-    return res.status(400).json({ message: "OTP has expired. Please request a new one." });
-  }
+    if (storedOtp.toString() !== otp.toString()) {
+      return res.status(400).json({ message: "Invalid OTP" });
+    }
 
-  if (storedOtp.toString() === otp) {
-    delete otpStore[email];
+    delete otpStore[identifier];
 
-    let user = await User.findOne({ where: { email } });
+    // Find user by either email or phone
+    const whereClause = email ? { email } : { phone };
+    let user = await User.findOne({ where: whereClause });
+
     let isNewUser = false;
 
     if (!user) {
-      user = await User.create({
-        email,
-        name: "New User", // placeholder
-        phone: "",
-        pincode: ""
-      });
+      // Create new user with only the verified identifier
+      const userData = {
+        name: "New User",
+        pincode: null,
+        [email ? 'email' : 'phone']: identifier // Set the verified identifier
+      };
+
+      user = await User.create(userData);
       isNewUser = true;
+      console.log(`✅ New user created: ${user.id}`);
     }
 
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, email: user.email, phone: user.phone },
       SECRET_KEY,
       { expiresIn: "1h" }
     );
 
     return res.status(200).json({
       message: "OTP verified successfully",
-      user,
       token,
-      isNewUser // 👈 Send this flag
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        pincode: user.pincode
+      },
+      isNewUser,
     });
-  } else {
-    console.log("❌ Invalid OTP entered");
-    return res.status(400).json({ message: "Invalid OTP" });
+  } catch (error) {
+    console.error("❌ Error verifying OTP:", error);
+    return res.status(500).json({ 
+      message: "OTP verification failed",
+      error: error.message 
+    });
+  }
+};
+
+// Save registration details
+export const saveRegistration = async (req, res) => {
+  try {
+    const { name, phone, pincode, email, userId } = req.body;
+
+    console.log('Registration data received:', { name, phone, pincode, email, userId });
+
+    // Validate required fields
+    if (!name || !userId) {
+      return res.status(400).json({ 
+        success: false,
+        message: "Name and user ID are required",
+        details: {
+          name: !name ? "Name is required" : undefined,
+          userId: !userId ? "User ID is required" : undefined
+        }
+      });
+    }
+
+    // Find the user
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: "User not found" 
+      });
+    }
+
+    // Prepare update data
+    const updateData = { name };
+    
+    // Only update fields that are provided and valid
+    if (phone) {
+      if (/^\d{10,15}$/.test(phone)) {
+        updateData.phone = phone;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid phone number format",
+          details: {
+            phone: "Must be 10-15 digits"
+          }
+        });
+      }
+    }
+
+    if (pincode) {
+      if (/^\d{6}$/.test(pincode)) {
+        updateData.pincode = pincode;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid pincode format",
+          details: {
+            pincode: "Must be exactly 6 digits"
+          }
+        });
+      }
+    }
+
+    if (email) {
+      if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        updateData.email = email;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid email format",
+          details: {
+            email: "Must be a valid email address"
+          }
+        });
+      }
+    }
+
+    // Update the user
+    await user.update(updateData);
+
+    return res.status(200).json({
+      success: true,
+      message: "Registration completed successfully",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        pincode: user.pincode
+      }
+    });
+  } catch (error) {
+    console.error("❌ Error saving registration:", error);
+    
+    // Handle specific Sequelize errors
+    if (error.name === 'SequelizeUniqueConstraintError') {
+      const field = error.errors[0].path;
+      return res.status(400).json({ 
+        success: false,
+        message: `${field} already registered`,
+        details: {
+          [field]:`This ${field} is already in use`
+        }
+      });
+    }
+    
+    return res.status(500).json({ 
+      success: false,
+      message: "Registration failed",
+      error: error.message
+    });
   }
 };

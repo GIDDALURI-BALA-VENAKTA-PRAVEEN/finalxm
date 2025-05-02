@@ -1,6 +1,8 @@
-import { generateWoohooSignature } from "../generateSignature.js";
+import { signature } from "../Woohooservice/signature.js"; 
 import axios from "axios";
 import dotenv from "dotenv";
+import WoohooOrder from "../models/cardorders.js";
+import { sequelize } from "../config/db.js";
 
 dotenv.config();
 
@@ -10,7 +12,7 @@ export const placeOrder = async (req, res) => {
   try {
     const { sku, price, razorpay_order_id } = req.body;
 
-    // Validation (keep your existing validation code)
+    // Validation
     if (!sku || !price || !razorpay_order_id) {
       return res.status(400).json({
         success: false,
@@ -23,6 +25,10 @@ export const placeOrder = async (req, res) => {
       });
     }
 
+    // console.log("Received SKU:", sku);
+    // console.log("Received Price:", price);
+    // console.log("Received Razorpay Order ID:", razorpay_order_id);
+
     const parsedPrice = parseFloat(price);
     if (isNaN(parsedPrice)) {
       return res.status(400).json({
@@ -31,10 +37,19 @@ export const placeOrder = async (req, res) => {
         details: "Price should be a number",
       });
     }
+    // console.log("Parsed Price:", parsedPrice);
+    if (parsedPrice <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid price",
+        details: "Price should be greater than 0",
+      });
+    }
+    // console.log("Parsed Price is valid and greater than 0");
 
     const refno = razorpay_order_id;
 
-    // Payload (keep your existing payload)
+    // Payload
     const payload = {
       address: {
         salutation: "Mr.",
@@ -71,29 +86,63 @@ export const placeOrder = async (req, res) => {
       syncOnly: true,
     };
 
+    // console.log("Payload for Woohoo API:", payload);
+    // console.log("Woohoo Order URL:", woohooOrderUrl);
     const method = "POST";
     
     // Generate signature with proper URL handling
-    const { signature, dateAtClient } = generateWoohooSignature(
-      woohooOrderUrl,
+    const { signature: generatedSignature, dateAtClient } = signature(
       method,
-      process.env.clientSecret
+      woohooOrderUrl,
+      payload
     );
+    console.log("Generated Signature:", generatedSignature);
+    console.log("Date at Client:", dateAtClient);
 
     // Make the API request
     const response = await axios.post(woohooOrderUrl, payload, {
       headers: {
         Authorization: `Bearer ${process.env.bearerToken}`,
-        Signature: signature,  // Ensure "Signature" key is used
+        Signature: generatedSignature,  // Ensure "Signature" key is used
         DateAtClient: dateAtClient,  // Ensure "DateAtClient" key is used
         "Content-Type": "application/json",
         Accept: "*/*",
       },
     });
 
-    console.log("Response from Woohoo API:", response.data);
+    const placed = response.data;
+    // console.log("Woohoo API response:", placed);
+    // console.log("stroing in db");
+
+    // Save to DB
+    const card = placed.cards[0];
+    const payment = placed.payments[0];
+    // console.log("Card details:", card);
+    // console.log("Product details:", placed.products[card.sku]);
+
+
+    await WoohooOrder.create({
+      orderId: placed.orderId,
+      refno: placed.refno,
+      sku: card.sku,
+      productName: card.productName,
+      amount: parseFloat(card.amount),
+      cardNumber: card.cardNumber,
+      cardPin: card.cardPin || "",
+      validity: card.validity ? new Date(card.validity) : null,
+      issuanceDate: card.issuanceDate ? new Date(card.issuanceDate) : null,
+      recipientName: card.recipientDetails?.name || "",
+      recipientEmail: card.recipientDetails?.email || "",
+      recipientPhone: card.recipientDetails?.mobileNumber || "",
+      balance:payment.balance
+    });
+
+    console.log("Woohoo API response status:", response.status);
+    console.log("Woohoo API response headers:", response.headers);
+    console.log("Woohoo API response data:", response.data);
+
     const result = response.data;
-   
+
     res.status(200).json({
       success: true,
       data: result,
