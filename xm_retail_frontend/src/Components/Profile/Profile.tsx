@@ -1,19 +1,29 @@
-import  { useEffect, useState } from "react";
-
+import { useEffect, useState } from "react";
 import { FaUserCircle } from "react-icons/fa";
 import { IoCall } from "react-icons/io5";
 import { MdEmail } from "react-icons/md";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+// Define the Card interface
+interface Card {
+  orderId: string;
+  productName: string;
+  amount: number;
+  cardNumber: string;
+  cardPin: string;
+  issuanceDate: string;
+  validity: string;
+}
 
-
-export default function Profile( ) {
+export default function Profile() {
   const navigate = useNavigate();
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [user, setUser] = useState({ name: "", email: "", phone: "" });
   const [isEditing, setIsEditing] = useState(false);
-  const apiUrl = import.meta.env.VITE_APP_SERVER_BASE_URL; 
+  const [cards, setCards] = useState<Card[]>([]); // Updated with Card interface
+  const apiUrl = import.meta.env.VITE_APP_SERVER_BASE_URL;
+
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
@@ -21,7 +31,6 @@ export default function Profile( ) {
           `${apiUrl}/api/user/profile?email=${storedUser.email}`
         );
         setUser(response.data);
-        
         localStorage.setItem("user", JSON.stringify(response.data));
       } catch (error) {
         console.error("Error fetching profile:", error);
@@ -29,12 +38,38 @@ export default function Profile( ) {
         navigate("/");
       }
     };
+
     if (storedUser.email) fetchUserProfile();
     else {
       alert("No user data found. Redirecting to login...");
       navigate("/");
     }
   }, [navigate, storedUser.email]);
+
+  useEffect(() => {
+    const fetchGiftCards = async () => {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        alert("You are not logged in. Redirecting to login...");
+        navigate("/");
+        return;
+      }
+
+      try {
+        const response = await axios.get(`${apiUrl}/api/orders/user-orders`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        setCards(response.data);
+      } catch (error) {
+        console.error("Error fetching gift cards:", error);
+      }
+    };
+
+    fetchGiftCards();
+  }, [navigate, apiUrl]);
 
   const handleEdit = () => setIsEditing(true);
 
@@ -48,22 +83,15 @@ export default function Profile( ) {
       alert("Failed to update profile. Try again.");
     }
   };
-  
 
   const handleLogout = () => {
     localStorage.removeItem("user");
-    window.dispatchEvent(new Event("storage")); // Trigger update in Nav
-    window.location.href = "/"; // Redirect to home
-    
+    window.dispatchEvent(new Event("storage"));
+    window.location.href = "/";
   };
-  
 
   return (
-
-    
     <div className="p-6 bg-gray-100 min-h-screen">
-
-      
       {/* Breadcrumb */}
       <div className="text-gray-500 text-sm mb-4">
         <span
@@ -71,7 +99,8 @@ export default function Profile( ) {
           onClick={() => navigate("/home")}
         >
           Home
-        </span>{" "}/ <span className="font-semibold">Profile Page</span>
+        </span>{" "}
+        / <span className="font-semibold">Profile Page</span>
       </div>
 
       {/* Profile Section */}
@@ -130,18 +159,18 @@ export default function Profile( ) {
               disabled
             />
 
-<label className="block text-gray-600 mt-4">Phone</label>
-<input
-  type="text"
-  value={user.phone}
-  onChange={(e) => {
-    const input = e.target.value;
-    if (/^\d{0,10}$/.test(input)) {
-      setUser({ ...user, phone: input });
-    }
-  }}
-  className="w-full border p-2 rounded-lg mt-2"
-/>
+            <label className="block text-gray-600 mt-4">Phone</label>
+            <input
+              type="text"
+              value={user.phone}
+              onChange={(e) => {
+                const input = e.target.value;
+                if (/^\d{0,10}$/.test(input)) {
+                  setUser({ ...user, phone: input });
+                }
+              }}
+              className="w-full border p-2 rounded-lg mt-2"
+            />
           </div>
         )}
       </div>
@@ -165,9 +194,33 @@ export default function Profile( ) {
       <div className="mt-6 max-w-4xl mx-auto">
         <h3 className="text-xl font-semibold">My Gift Cards</h3>
         <div className="mt-4 bg-gray-200 p-6 rounded-2xl flex justify-center">
-          <button className="bg-black text-white px-6 py-2 rounded-lg">
-            Buy Card +
-          </button>
+          {cards.length === 0 ? (
+            <p>No gift cards found.</p>
+          ) : (
+            cards.map((card) => (
+              <div
+                key={card.orderId}
+                className="bg-white shadow rounded-lg p-4 mb-4"
+              >
+                <h4 className="font-bold">{card.productName}</h4>
+                <p>Amount: ₹{card.amount}</p>
+                <p>Card Number: {card.cardNumber}</p>
+                <p>PIN: {card.cardPin}</p>
+                <p>Issued: {new Date(card.issuanceDate).toLocaleDateString()}</p>
+                <h5 className="text-sm text-gray-500">
+                  Valid Till:{" "}
+                  {new Date(card.validity).toLocaleString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                    hour: "2-digit",
+                    minute: "2-digit",
+                    hour12: true,
+                  })}
+                </h5>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -183,7 +236,6 @@ export default function Profile( ) {
         >
           Logout
         </button>
-      
       </div>
     </div>
   );

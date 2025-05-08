@@ -39,6 +39,7 @@ app.use("/uploads", express.static("uploads"));
 
 // API Routes
 app.use("/api/cards", cardRoutes);
+app.use('/api/orders',orderRoutes)
 
 //payment
 app.use('/api/payment', payment);

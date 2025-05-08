@@ -10,7 +10,26 @@ const woohooOrderUrl = `https://sandbox.woohoo.in/rest/v3/orders`;
 
 export const placeOrder = async (req, res) => {
   try {
-    const { sku, price, razorpay_order_id } = req.body;
+    const { sku, price, razorpay_order_id,name,email,phone } = req.body;
+
+    //error handlig for missing params name, email, phonee
+    if (!name || !email || !phone) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing parameters",
+        details: !name
+          ? "name is required"
+          : !email
+          ? "email is required"
+          : "phone is required",
+      });
+    }
+
+    //error handling for missing params sku, price, razorpay_order_id
+
+
+
+    console.log("Received request body:", req.body);
 
     // Validation
     if (!sku || !price || !razorpay_order_id) {
@@ -49,14 +68,17 @@ export const placeOrder = async (req, res) => {
 
     const refno = razorpay_order_id;
 
+    // const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+
+
     // Payload
     const payload = {
       address: {
         salutation: "Mr.",
-        firstname: "John",
-        lastname: "Doe",
-        email: "john.doe@example.com",
-        telephone: "+919876543210",
+        firstname: name,
+        lastname: "jackson",
+        email: email,
+        telephone: `+91${phone}`,
         line1: "123 Main Street",
         city: "Bangalore",
         region: "Karnataka",
@@ -96,8 +118,8 @@ export const placeOrder = async (req, res) => {
       woohooOrderUrl,
       payload
     );
-    console.log("Generated Signature:", generatedSignature);
-    console.log("Date at Client:", dateAtClient);
+    // console.log("Generated Signature:", generatedSignature);
+    // console.log("Date at Client:", dateAtClient);
 
     // Make the API request
     const response = await axios.post(woohooOrderUrl, payload, {
@@ -117,11 +139,23 @@ export const placeOrder = async (req, res) => {
     // Save to DB
     const card = placed.cards[0];
     const payment = placed.payments[0];
+    const recieptdetails = placed.cards[0].recipientDetails;
+
+    console.log("Card details:", recieptdetails.name);
+    console.log("Card details:", recieptdetails.email);
+    console.log("Card details:", recieptdetails.mobileNumber);
+    
+
+    
     // console.log("Card details:", card);
     // console.log("Product details:", placed.products[card.sku]);
 
 
     await WoohooOrder.create({
+
+      name: name,
+      email: email,
+      phone: phone,
       orderId: placed.orderId,
       refno: placed.refno,
       sku: card.sku,
@@ -129,16 +163,17 @@ export const placeOrder = async (req, res) => {
       amount: parseFloat(card.amount),
       cardNumber: card.cardNumber,
       cardPin: card.cardPin || "",
-      validity: card.validity ? new Date(card.validity) : null,
+      validity: card.validity ,
       issuanceDate: card.issuanceDate ? new Date(card.issuanceDate) : null,
       recipientName: card.recipientDetails?.name || "",
       recipientEmail: card.recipientDetails?.email || "",
       recipientPhone: card.recipientDetails?.mobileNumber || "",
-      balance:payment.balance
+      balance:payment.balance,
+     
     });
 
-    console.log("Woohoo API response status:", response.status);
-    console.log("Woohoo API response headers:", response.headers);
+    // console.log("Woohoo API response status:", response.status);
+    // console.log("Woohoo API response headers:", response.headers);
     console.log("Woohoo API response data:", response.data);
 
     const result = response.data;

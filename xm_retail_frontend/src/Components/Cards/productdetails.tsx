@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
-
 import { motion, AnimatePresence } from "framer-motion";
 
 declare global {
@@ -40,6 +39,7 @@ interface Product {
 const ProductDetails: React.FC = () => {
   const { productSku } = useParams<{ productSku: string }>();
   const [product, setProduct] = useState<Product | null>(null);
+  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [selectedDenomination, setSelectedDenomination] = useState<string>("");
@@ -47,16 +47,19 @@ const ProductDetails: React.FC = () => {
   const [orderData, setOrderData] = useState<any>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-  const [user, setUser] = useState({ name: "", email: "", phone: "" });
+  
   const navigate = useNavigate();
 
   const isLoggedIn = localStorage.getItem("user") !== null;
+
 
   useEffect(() => {
     const fetchProduct = async () => {
       try {
         if (productSku) {
-          const response = await axios.get(`http://localhost:4000/api/woohoo/product/details/${productSku}`);
+          const response = await axios.get(
+            `http://localhost:4000/api/woohoo/product/details/${productSku}`
+          );
           const data = response.data;
           if (data) {
             setProduct(data);
@@ -78,21 +81,26 @@ const ProductDetails: React.FC = () => {
     fetchProduct();
   }, [productSku]);
 
-  // useEffect(() => {
-  //   try {
-  //     const response =  axios.get(
-  //       `http://localhost:4000/api/user/profile?email=${storedUser.email}`
-  //     );
-  //     // setUser(response.data);
-      
-  //     // localStorage.setItem("user", JSON.stringify(response.data));
-  //   } catch (error) {
-  //     console.error("Error fetching profile:", error);
-  //     alert("Failed to load profile. Redirecting to login...");
-  //     navigate("/");
-  //   }
-  // },[]);
-    
+  useEffect(() => {
+    const fetchRelatedProducts = async () => {
+      try {
+        if (productSku) {
+          const response = await axios.get(
+            `http://localhost:4000/api/woohoo/products/${productSku}/related`
+          );
+          const relatedProductsData = response.data?.relatedProducts || [];
+          setRelatedProducts(
+            Array.isArray(relatedProductsData) ? relatedProductsData : []
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching related products:", error);
+        setRelatedProducts([]);
+      }
+    };
+
+    fetchRelatedProducts();
+  }, [productSku]);
 
   const loadRazorpayScript = (): Promise<boolean> => {
     return new Promise((resolve) => {
@@ -133,7 +141,6 @@ const ProductDetails: React.FC = () => {
       const orderResponse = await axios.post("http://localhost:4000/api/payment/order", {
         amount: selectedDenomination,
         currency: "INR",
-
       });
 
       const orderData = orderResponse.data.data;
@@ -160,30 +167,25 @@ const ProductDetails: React.FC = () => {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
+            alert(storedUser.name + " your order has been placed successfully.");
+            alert(storedUser.email + " your order has been placed successfully.");
+            alert(storedUser.phone + " your order has been placed successfully.");
 
             if (verifyResponse.data.success) {
-              try {
-                const orderApiResponse = await axios.post("http://localhost:4000/api/order/place-order", {
-                  sku: product?.sku,
-                  price: selectedDenomination,
-                  razorpay_order_id: response.razorpay_order_id,
-                });
-              
-                const orderData = orderApiResponse.data.data; 
-                const card = orderApiResponse.data.data.cards[0];
-                // const payment = orderApiResponse.data.data.payment[0];
-                // alert(JSON.stringify(card, null, 2));
-                // alert(JSON.stringify(orderData, null, 2));
+              const orderApiResponse = await axios.post("http://localhost:4000/api/order/place-order", {
+                sku: product?.sku,
+                price: selectedDenomination,
+                razorpay_order_id: response.razorpay_order_id,
+                email: storedUser.email,
+                phone: storedUser.phone,
+                name: storedUser.name,
+              });
 
+              const card = orderApiResponse.data.data.cards[0];
+              setOrderData(card);
+              setShowSuccessModal(true);
 
-                setOrderData(card); 
-                // alert(orderData.message);
-                setShowSuccessModal(true); 
               
-              } catch (err) {
-                console.error("Order placement failed:", err);
-                alert("Failed to place order.");
-              }
             } else {
               alert("Payment verification failed.");
             }
@@ -193,16 +195,15 @@ const ProductDetails: React.FC = () => {
           }
         },
         prefill: {
-          name: "John Doe",
-          email: "john.doe@example.com",
-          contact: "+919876543210",
+          name: storedUser.name,
+          email: storedUser.email,
+          contact: `+91${storedUser.phone}`,
         },
         theme: {
           color: "#F37254",
         },
         modal: {
           ondismiss: () => {
-            console.log("Payment popup closed");
             setIsPaymentProcessing(false);
           },
         },
@@ -224,7 +225,6 @@ const ProductDetails: React.FC = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      {/* <div> {storedUser.email}</div> */}
       <h1 className="text-3xl font-bold mb-6 text-center">{product.name}</h1>
       <div className="flex flex-col md:flex-row gap-6">
         <div className="md:w-1/3">
@@ -282,13 +282,34 @@ const ProductDetails: React.FC = () => {
         </div>
       </div>
 
-      <div className="mt-6 text-center">
-        <button
-          onClick={() => navigate(-1)}
-          className="bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded"
-        >
-          Back to Products
-        </button>
+      {/* Related Products Section */}
+      <div className="mt-12">
+        <h2 className="text-2xl font-semibold mb-4">Related Products</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {relatedProducts.map((related) => (
+            <div
+              key={related.sku}
+              className="border rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition cursor-pointer"
+              onClick={() => navigate(`/product/${related.sku}`)}
+            >
+              <img
+                src={related.images?.thumbnail || "/placeholder-image.jpg"}
+                alt={related.name}
+                className="w-full h-48 object-cover"
+              />
+              <div className="p-4">
+                <h3 className="text-lg font-medium">{related.name}</h3>
+                <p className="text-sm text-gray-600">
+                  From {related.price?.currency?.symbol || "₹"}
+                  {related.price?.min || "0"}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+        {relatedProducts.length === 0 && !loading && (
+          <p className="text-center text-gray-500 mt-4">No related products found</p>
+        )}
       </div>
 
       {/* Success Modal */}
@@ -309,8 +330,6 @@ const ProductDetails: React.FC = () => {
               <h2 className="text-xl font-bold mb-4 text-green-600">Payment & Order Successful!</h2>
               {orderData ? (
                 <div className="text-sm text-gray-700 space-y-2">
-
-                  {/* <p><strong>Order ID:</strong> {orderData.orderId || "N/A"}</p> */}
                   <p><strong>SKU:</strong> {orderData.sku}</p>
                   <p><strong>Product Name:</strong> {product.name}</p>
                   <p><strong>Price:</strong> ₹{orderData.amount}</p>
@@ -318,8 +337,6 @@ const ProductDetails: React.FC = () => {
                   <p><strong>Card Type:</strong> {orderData.cardPin}</p>
                   <p><strong>Card validity:</strong> {orderData.validity}</p>
                   <p><strong>Card IssueDate:</strong> {orderData.issuanceDate}</p>
-                  
-
                   <p><strong>Status:</strong> {orderData.status || "Confirmed"}</p>
                 </div>
               ) : (
