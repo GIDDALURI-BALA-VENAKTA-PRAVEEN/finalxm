@@ -4,6 +4,8 @@ import { IoCall } from "react-icons/io5";
 import { MdEmail } from "react-icons/md";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import Carousel from "react-multi-carousel";
+import "react-multi-carousel/lib/styles.css";
 
 // Define the Card interface
 interface Card {
@@ -21,7 +23,7 @@ export default function Profile() {
   const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
   const [user, setUser] = useState({ name: "", email: "", phone: "" });
   const [isEditing, setIsEditing] = useState(false);
-  const [cards, setCards] = useState<Card[]>([]); // Updated with Card interface
+  const [cards, setCards] = useState<Card[]>([]);
   const apiUrl = import.meta.env.VITE_APP_SERVER_BASE_URL;
 
   useEffect(() => {
@@ -89,6 +91,12 @@ export default function Profile() {
     window.dispatchEvent(new Event("storage"));
     window.location.href = "/";
   };
+
+  // 💡 Calculate totals
+  const totalSavings = cards.reduce((total, card) => {
+    const originalPrice = card.amount / 0.95; // assuming 5% discount
+    return total + (originalPrice - card.amount);
+  }, 0);
 
   return (
     <div className="p-6 bg-gray-100 min-h-screen">
@@ -175,15 +183,15 @@ export default function Profile() {
         )}
       </div>
 
-      {/* Financial Summary */}
-      <div className="mt-6 bg-purple-600 text-white p-6 rounded-2xl shadow-lg max-w-4xl mx-auto flex justify-between">
+      {/* ✅ Updated Financial Summary Section */}
+      <div className="mt-6 bg-purple-600 text-white p-6 rounded-2xl shadow-lg max-w-4xl mx-auto flex justify-between items-center">
         <div>
           <p className="text-sm">Total Savings</p>
-          <h3 className="text-2xl font-bold">₹0</h3>
+          <h3 className="text-2xl font-bold">₹{totalSavings.toFixed(2)}</h3>
         </div>
         <div>
           <p className="text-sm">Total Bought</p>
-          <h3 className="text-2xl font-bold">0</h3>
+          <h3 className="text-2xl font-bold">{cards.length}</h3>
         </div>
         <button className="bg-black text-white px-4 py-2 rounded-lg">
           View Refunds
@@ -191,38 +199,92 @@ export default function Profile() {
       </div>
 
       {/* My Gift Cards Section */}
-      <div className="mt-6 max-w-4xl mx-auto">
-        <h3 className="text-xl font-semibold">My Gift Cards</h3>
-        <div className="mt-4 bg-gray-200 p-6 rounded-2xl flex justify-center">
-          {cards.length === 0 ? (
-            <p>No gift cards found.</p>
-          ) : (
-            cards.map((card) => (
-              <div
-                key={card.orderId}
-                className="bg-white shadow rounded-lg p-4 mb-4"
-              >
-                <h4 className="font-bold">{card.productName}</h4>
-                <p>Amount: ₹{card.amount}</p>
-                <p>Card Number: {card.cardNumber}</p>
-                <p>PIN: {card.cardPin}</p>
-                <p>Issued: {new Date(card.issuanceDate).toLocaleDateString()}</p>
-                <h5 className="text-sm text-gray-500">
-                  Valid Till:{" "}
-                  {new Date(card.validity).toLocaleString("en-IN", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: true,
-                  })}
-                </h5>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      {/* My Gift Cards Section */}
+<div className="mt-6 max-w-4xl mx-auto bg-[#E5E5E5] p-6 rounded-2xl shadow-inner">
+  <h3 className="text-xl font-semibold mb-4">My Gift Cards</h3>
+
+  {cards.length === 0 ? (
+    <p className="text-center bg-gray-200 p-6 rounded-2xl">No gift cards found.</p>
+  ) : (
+    <Carousel
+      additionalTransfrom={0}
+      arrows
+      autoPlaySpeed={3000}
+      centerMode={false}
+      className=""
+      containerClass="container-with-dots"
+      dotListClass=""
+      draggable
+      focusOnSelect={false}
+      infinite={false}
+      itemClass="px-2"
+      keyBoardControl
+      minimumTouchDrag={80}
+      renderButtonGroupOutside={false}
+      renderDotsOutside={false}
+      responsive={{
+        superLargeDesktop: {
+          breakpoint: { max: 4000, min: 1536 },
+          items: 4,
+        },
+        desktop: {
+          breakpoint: { max: 1536, min: 1024 },
+          items: 3,
+        },
+        tablet: {
+          breakpoint: { max: 1024, min: 768 },
+          items: 2,
+        },
+        mobile: {
+          breakpoint: { max: 768, min: 0 },
+          items: 1,
+        },
+      }}
+      showDots={false}
+      sliderClass=""
+      slidesToSlide={1}
+      swipeable
+    >
+      {cards.map((card) => (
+  <div
+    key={card.orderId}
+    className="bg-white rounded-2xl shadow-md p-4 w-full h-full flex flex-col justify-between border border-gray-200 hover:shadow-lg transition duration-300"
+  >
+    <div>
+      <h4 className="text-lg font-semibold text-gray-800 mb-2 truncate">{card.productName}</h4>
+      <p className="text-sm text-gray-600 mb-1">
+        <span className="font-medium">Amount:</span> ₹{card.amount}
+      </p>
+      <p className="text-sm text-gray-600 mb-1">
+        <span className="font-medium">Card #:</span>{" "}
+        <span className="font-mono text-blue-700">{card.cardNumber}</span>
+      </p>
+      <p className="text-sm text-gray-600 mb-1">
+        <span className="font-medium">PIN:</span>{" "}
+        <span className="font-mono text-red-600">{card.cardPin}</span>
+      </p>
+    </div>
+    <div className="mt-3 border-t pt-2 text-xs text-gray-500">
+      <p>
+        Issued: {new Date(card.issuanceDate).toLocaleDateString()}
+      </p>
+      <p>
+        Valid till:{" "}
+        {new Date(card.validity).toLocaleString("en-IN", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: true,
+        })}
+      </p>
+    </div>
+  </div>
+))}
+    </Carousel>
+  )}
+</div>  
 
       {/* Footer Section */}
       <div className="mt-6 max-w-4xl mx-auto text-gray-600 text-sm flex justify-between items-center">

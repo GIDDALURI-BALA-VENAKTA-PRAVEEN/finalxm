@@ -1,9 +1,14 @@
-import mongoose from "mongoose";
+import { Sequelize, DataTypes } from "sequelize";
+import { sequelize } from "../config/db.js";
 
-const imageSchema = new mongoose.Schema({
-  url: String,
+export const Image = sequelize.define("Images", {
+  id: {
+    type: DataTypes.INTEGER,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  url: {
+    type: DataTypes.STRING,
+    allowNull: false,
+  },
 });
-
-const Image = mongoose.model("Image", imageSchema);
-
-export default Image;
