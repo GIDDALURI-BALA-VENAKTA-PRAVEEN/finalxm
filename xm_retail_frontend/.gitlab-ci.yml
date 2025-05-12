@@ -3,7 +3,7 @@ stages:
   - deploy
 
 variables:
-  IMAGE_NAME: kondalu98/gitreact:latest
+  IMAGE_NAME: parzival2808/xmfrontend
 
 build:
   stage: build
@@ -11,7 +11,7 @@ build:
   services:
     - docker:dind
   script:
-    - echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     - docker build -t $IMAGE_NAME --build-arg VITE_APP_SERVER_BASE_URL=$VITE_APP_SERVER_BASE_URL .
     - docker push $IMAGE_NAME
   only:
@@ -26,4 +26,4 @@ deploy:
   only:
     - main
   tags:
-    - front
+    - frontend

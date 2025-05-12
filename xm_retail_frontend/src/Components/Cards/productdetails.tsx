@@ -167,9 +167,9 @@ const ProductDetails: React.FC = () => {
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
             });
-            alert(storedUser.name + " your order has been placed successfully.");
-            alert(storedUser.email + " your order has been placed successfully.");
-            alert(storedUser.phone + " your order has been placed successfully.");
+            // alert(storedUser.name + " your order has been placed successfully.");
+            // alert(storedUser.email + " your order has been placed successfully.");
+            // alert(storedUser.phone + " your order has been placed successfully.");
 
             if (verifyResponse.data.success) {
               const orderApiResponse = await axios.post("http://localhost:4000/api/order/place-order", {
