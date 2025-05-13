@@ -1,0 +1,197 @@
+/* ========== Base Styles ========== */
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9f9f9;
+  color: #333;
+}
+
+.container {
+  max-width: 1200px;
+  margin: auto;
+  padding: 20px;
+}
+
+/* ========== Header ========== */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  background-color: #ffcc00;
+  color: #000;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+header .logo {
+  font-size: 1.7rem;
+  font-weight: bold;
+  color: #e65100;
+}
+
+.search-bar {
+  flex-grow: 1;
+  margin: 0 20px;
+  padding: 10px 16px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 15px;
+}
+
+button.login-btn {
+  background-color: #ff5722;
+  color: white;
+  padding: 8px 16px;
+  border: none;
+  border-radius: 20px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button.login-btn:hover {
+  background-color: #e64a19;
+}
+
+/* ========== Section Titles ========== */
+.section-title {
+  font-size: 22px;
+  text-align: center;
+  font-weight: bold;
+  margin: 30px 0 15px;
+  color: #222;
+}
+
+/* ========== Category Cards ========== */
+.category-card {
+  padding: 16px;
+  border-radius: 12px;
+  color: white;
+  font-weight: bold;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 3px solid transparent;
+  min-width: 180px;
+}
+
+.category-card img {
+  width: 60px;
+  height: 60px;
+  margin-bottom: 10px;
+}
+
+.category-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ========== Category-Specific Styles ========== */
+.category-card.biggestsales {
+  background-color: #ff5722;
+  border-color: #e64a19;
+}
+
+.category-card.banking {
+  background-color: #4caf50;
+  border-color: #388e3c;
+}
+
+.category-card.hotelsflights {
+  background-color: #ffa000;
+  border-color: #fb8c00;
+}
+
+.category-card.electronics {
+  background-color: #2196f3;
+  border-color: #1976d2;
+}
+
+.category-card.mobiles {
+  background-color: #9c27b0;
+  border-color: #7b1fa2;
+}
+
+.category-card.fashion {
+  background-color: #e91e63;
+  border-color: #c2185b;
+}
+
+.category-card.beautygrooming {
+  background-color: #ff69b4;
+  border-color: #ec407a;
+}
+
+.category-card.healthwellness {
+  background-color: #43a047;
+  border-color: #2e7d32;
+}
+
+.category-card.pharmacy {
+  background-color: #00acc1;
+  border-color: #00838f;
+}
+
+.category-card.homekitchen {
+  background-color: #8d6e63;
+  border-color: #6d4c41;
+}
+
+.category-card.education {
+  background-color: #5c6bc0;
+  border-color: #3949ab;
+}
+
+.category-card.foodgrocery {
+  background-color: #ff7043;
+  border-color: #f4511e;
+}
+
+.category-card.hosting {
+  background-color: #26c6da;
+  border-color: #00acc1;
+}
+
+.category-card.departmental {
+  background-color: #ab47bc;
+  border-color: #8e24aa;
+}
+
+/* ========== Error Messages ========== */
+.error-message {
+  color: crimson;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 20px;
+}
+
+/* ========== Product Section Placeholder ========== */
+.no-images {
+  text-align: center;
+  font-style: italic;
+  color: #888;
+  margin-top: 40px;
+  font-size: 16px;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .search-bar {
+    width: 100%;
+    margin: 0;
+  }
+
+  button.login-btn {
+    align-self: flex-end;
+  }
+
+  .categories {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  }
+}

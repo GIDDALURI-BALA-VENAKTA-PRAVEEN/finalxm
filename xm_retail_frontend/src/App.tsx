@@ -1,12 +1,11 @@
+import React, { useState } from "react";
 import CardApp from "./Components/Cards/CardApp";
 import Categorycards from "./Components/Cards/categorycards";
-import ProductDetails from "./Components/Cards/productdetails";
-import ProductList from "./Components/Cards/productslistcards";
 import Product from "./Components/Cards/WoohooAllCards";
 import Carousel from "./Components/Carousel/Carousels";
 import Category from "./Components/categories/Category";
 import Nav from "./Components/NavBar/Nav";
-import { useState } from "react";
+import "./App.css";
 
 const App: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>("");
@@ -14,11 +13,20 @@ const App: React.FC = () => {
   return (
     <>
       <Nav />
+
+      {/* Main Banner/Slider */}
       <Carousel />
+
+      {/* Top Category Selectors (with click handlers) */}
       <Category setSelectedCategory={setSelectedCategory} />
+
+      {/* Product Cards based on selected category */}
       <CardApp selectedCategory={selectedCategory} />
-      {/* <ProductDetails /> */}
+
+      {/* Category Highlights */}
       <Categorycards />
+
+      {/* Woohoo All Cards Section */}
       <Product />
     </>
   );

@@ -79,11 +79,19 @@ const Category: React.FC<CategoryProps> = ({ setSelectedCategory }) => {
           {/* Category Slider */}
           <div ref={sliderRef} className="flex overflow-hidden scrollbar-hide gap-4 p-2 scroll-smooth">
             {categories.map((category, index) => (
+              // <div
+              //   key={index}
+              //   className="flex flex-col items-center bg-white rounded-lg shadow-md px-6 py-4 min-w-[200px]"
+              //   onClick={() => handleCategoryClick(category.name)} // Set category when clicked
+              // >
+
               <div
-                key={index}
-                className="flex flex-col items-center bg-white rounded-lg shadow-md px-6 py-4 min-w-[200px]"
-                onClick={() => handleCategoryClick(category.name)} // Set category when clicked
-              >
+  key={index}
+  className={`category-card ${category.name.toLowerCase().replace(/[^a-z]/g, '')}`}
+  onClick={() => handleCategoryClick(category.name)}
+>
+
+
                 <img
                   src={category.icon}
                   alt={category.name}
