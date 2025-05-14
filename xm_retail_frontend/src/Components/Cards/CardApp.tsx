@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 import Card from "./Card";
 import axios from "axios";
 
@@ -12,44 +11,41 @@ interface CardType {
 }
 
 interface CardAppProps {
-  selectedCategory: string; // Prop for selected category
+  selectedCategory: string;
 }
 
 const CardApp: React.FC<CardAppProps> = ({ selectedCategory }) => {
   const [cards, setCards] = useState<CardType[]>([]);
-  const [visibleCount, setVisibleCount] = useState(10); 
+  const [visibleCount, setVisibleCount] = useState(10);
   const apiUrl = import.meta.env.VITE_APP_SERVER_BASE_URL;
-  
+
   useEffect(() => {
     axios.get(`${apiUrl}/api/cards`).then((res) => {
       setCards(res.data);
     });
   }, []);
 
-  // Filter cards based on selected category
   const filteredCards = selectedCategory
     ? cards.filter((card) => card.category === selectedCategory)
     : cards;
 
-  // Limit the number of visible cards
   const visibleCards = filteredCards.slice(0, visibleCount);
 
   return (
     <div className="p-5">
-      <h1 className="text-2xl font-bold mb-4 text-center">Most Popular Brands</h1>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 place-items-center">
+      <h1 className="text-2xl font-bold mb-6 text-center">Most Popular Brands</h1>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {visibleCards.map((card) => (
           <Card key={card.id} card={card} />
         ))}
       </div>
 
-      {/* Show More Button */}
       {visibleCount < filteredCards.length && (
-        <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-6">
           <button
-            onClick={() => setVisibleCount(filteredCards.length)} // Show all remaining cards
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg shadow-md hover:bg-blue-700 transition"
+            onClick={() => setVisibleCount(filteredCards.length)}
+            className="bg-blue-600 text-white px-6 py-2 rounded-md shadow-md hover:bg-blue-800 transition"
           >
             Show More
           </button>

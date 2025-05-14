@@ -19,6 +19,7 @@ const Product: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<ProductType | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string>("");
+  const [visibleCount, setVisibleCount] = useState<number>(10); // Show only 2 rows initially
 
   useEffect(() => {
     axios
@@ -48,6 +49,8 @@ const Product: React.FC = () => {
       });
   };
 
+  const isSeeMoreVisible = visibleCount < productList.length;
+
   return (
     <div className="p-5 max-w-7xl mx-auto">
       <h1 className="text-2xl font-bold mb-6 text-center">Available Products</h1>
@@ -62,8 +65,9 @@ const Product: React.FC = () => {
             selectedProduct ? "md:grid-cols-2" : "md:grid-cols-5"
           }`}
         >
-          {productList.map((product) => {
-            const imageUrl = product.image?.thumbnail ?? "https://via.placeholder.com/150";
+          {productList.slice(0, visibleCount).map((product) => {
+            const imageUrl = product.image?.thumbnail?.trim() || "https://via.placeholder.com/150";
+
 
             return (
               <div
@@ -74,7 +78,7 @@ const Product: React.FC = () => {
                 <img
                   src={imageUrl}
                   alt={product.name ?? "Product"}
-                  className="w-full h-48 object-cover rounded mb-3"
+                  className="w-full h-40 object-cover rounded mb-2"
                 />
                 <h2 className="text-sm font-semibold text-center text-gray-800">
                   {product.name ?? "No Name"}
@@ -111,6 +115,29 @@ const Product: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* See More Button */}
+      {/* See More / See Less Buttons */}
+{productList.length > 10 && (
+  <div className="flex justify-center mt-6">
+    {isSeeMoreVisible ? (
+      <button
+        onClick={() => setVisibleCount(productList.length)}
+        className="bg-blue-600 text-white px-6 py-2 rounded shadow hover:bg-blue-700 transition"
+      >
+        See More
+      </button>
+    ) : (
+      <button
+        onClick={() => setVisibleCount(10)}
+        className="bg-gray-600 text-white px-6 py-2 rounded shadow hover:bg-gray-700 transition"
+      >
+        See Less
+      </button>
+    )}
+  </div>
+)}
+
     </div>
   );
 };

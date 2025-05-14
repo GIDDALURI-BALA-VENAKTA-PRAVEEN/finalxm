@@ -1,7 +1,7 @@
 import CardApp from "./Components/Cards/CardApp";
 import Categorycards from "./Components/Cards/categorycards";
-import ProductDetails from "./Components/Cards/productdetails";
-import ProductList from "./Components/Cards/productslistcards";
+// import ProductDetails from "./Components/Cards/productdetails";
+// import ProductList from "./Components/Cards/productslistcards";
 import Product from "./Components/Cards/WoohooAllCards";
 import Carousel from "./Components/Carousel/Carousels";
 import Category from "./Components/categories/Category";
