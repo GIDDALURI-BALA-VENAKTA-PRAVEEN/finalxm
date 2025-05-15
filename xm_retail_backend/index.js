@@ -16,6 +16,7 @@ import woohooRoutes from "./routes/woohooRoutes.js";
 import orderRoutes from "./routes/orderroutes.js"; // Ensure the file extension is included
 import Order from "./models/orderModel.js";
 import OrderdetailsRoutes from "./routes/OrderdetailsRoutes.js"; // Ensure the file extension is included
+import searchRoutes from "./routes/search.js"; // Ensure the file extension is included
 
 
 const app = express();
@@ -86,6 +87,8 @@ app.use("/cust/data",cust);
 
 //customer Order details
 app.use("/api/order",OrderdetailsRoutes);
+
+app.use("/api/search", searchRoutes);
 
 
 app.listen(PORT, () => {

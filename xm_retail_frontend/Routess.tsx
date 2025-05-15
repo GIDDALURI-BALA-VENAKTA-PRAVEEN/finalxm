@@ -10,6 +10,7 @@ import AdminLogin from "./src/Components/Admin/AdminLogin";
 import AdminProtectedRoute from "./src/Components/AdminProtectedRoute";
 import DashBoard from "./src/Components/Admin/DashBoard";
 import ProductDetails from "./src/Components/Cards/productdetails";
+import CartPage from "./src/Components/Cards/CartPage";
 
 function Routess() {
   return (
@@ -34,6 +35,8 @@ function Routess() {
         {/* ✅ Add ProductList route here */}
         <Route path="/products/:categoryId" element={<ProductList />} />
         <Route path="/product/:productSku" element={<ProductDetails />} />
+        <Route path="/cart" element={<CartPage/>} />
+        {/* Add other routes here */}
       </Routes>
     </Router>
   );

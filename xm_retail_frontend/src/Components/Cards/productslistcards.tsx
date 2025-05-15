@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import axios from "axios";
+import Nav from "../NavBar/Nav";
 
 interface Product {
   sku: string;
@@ -57,47 +58,50 @@ const ProductList: React.FC = () => {
   if (error) return <p className="text-center text-red-500">{error}</p>;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-center">Products for Category {categoryId}</h1>
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-        {productList.length > 0 ? (
-          productList.map((product) => (
-            <div
-              key={product.sku}
-              className="bg-white rounded-xl shadow hover:shadow-md transition-all p-4 flex flex-col justify-between"
-            >
-              <img
-                src={product.images.thumbnail}
-                alt={product.name}
-                className="w-full h-48 object-cover rounded mb-4"
-              />
-              <p className="font-bold">{product.name}</p> {/* Bold product name */}
-              <div className="text-sm text-gray-600">
-                <p>
-                    <strong>Price: </strong> 
-                  {product.currency.symbol}
-                  {product.minPrice} - {product.currency.symbol}
-                  {product.maxPrice}
-                </p>
-                {product.offer && (
-                  <p className="text-red-500">
-                    <strong>Offer:</strong> {product.offer}
-                  </p>
-                )}
-              </div>
-              <button
-                onClick={() => window.location.href = `/product/${product.sku}`} // Navigate to the product detail page
-                className="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+    <>
+      <Nav/>
+      <div className="p-6 max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold mb-6 text-center">Products for Category {categoryId}</h1>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
+          {productList.length > 0 ? (
+            productList.map((product) => (
+              <div
+                key={product.sku}
+                className="bg-white rounded-xl shadow hover:shadow-md transition-all p-4 flex flex-col justify-between"
               >
-                View Details
-              </button>
-            </div>
-          ))
-        ) : (
-          <p className="text-center text-gray-500">No products available for this category.</p>
-        )}
+                <img
+                  src={product.images.thumbnail}
+                  alt={product.name}
+                  className="w-full h-48 object-cover rounded mb-4"
+                />
+                <p className="font-bold">{product.name}</p> {/* Bold product name */}
+                <div className="text-sm text-gray-600">
+                  <p>
+                      <strong>Price: </strong> 
+                    {product.currency.symbol}
+                    {product.minPrice} - {product.currency.symbol}
+                    {product.maxPrice}
+                  </p>
+                  {product.offer && (
+                    <p className="text-red-500">
+                      <strong>Offer:</strong> {product.offer}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => window.location.href = `/product/${product.sku}`} // Navigate to the product detail page
+                  className="mt-4 bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600"
+                >
+                  View Details
+                </button>
+              </div>
+            ))
+          ) : (
+            <p className="text-center text-gray-500">No products available for this category.</p>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 

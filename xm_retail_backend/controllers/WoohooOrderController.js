@@ -1,4 +1,6 @@
-import { signature } from "../Woohooservice/signature.js"; 
+// controllers/placeOrder.js
+
+import { signature } from "../Woohooservice/signature.js";
 import axios from "axios";
 import dotenv from "dotenv";
 import WoohooOrder from "../models/cardorders.js";
@@ -10,9 +12,9 @@ const woohooOrderUrl = `https://sandbox.woohoo.in/rest/v3/orders`;
 
 export const placeOrder = async (req, res) => {
   try {
-    const { sku, price, razorpay_order_id,name,email,phone } = req.body;
+    const { sku, price, razorpay_order_id, name, email, phone, quantity } = req.body;
 
-    //error handlig for missing params name, email, phonee
+    // Validate user info
     if (!name || !email || !phone) {
       return res.status(400).json({
         success: false,
@@ -25,14 +27,8 @@ export const placeOrder = async (req, res) => {
       });
     }
 
-    //error handling for missing params sku, price, razorpay_order_id
-
-
-
-    console.log("Received request body:", req.body);
-
-    // Validation
-    if (!sku || !price || !razorpay_order_id) {
+    // Validate SKU, price, order ID, quantity
+    if (!sku || !price || !razorpay_order_id || !quantity) {
       return res.status(400).json({
         success: false,
         error: "Missing parameters",
@@ -40,38 +36,32 @@ export const placeOrder = async (req, res) => {
           ? "sku is required"
           : !price
           ? "price is required"
-          : "razorpay_order_id is required",
+          : !razorpay_order_id
+          ? "razorpay_order_id is required"
+          : "quantity is required",
       });
     }
-
-    // console.log("Received SKU:", sku);
-    // console.log("Received Price:", price);
-    // console.log("Received Razorpay Order ID:", razorpay_order_id);
 
     const parsedPrice = parseFloat(price);
-    if (isNaN(parsedPrice)) {
+    if (isNaN(parsedPrice) || parsedPrice <= 0) {
       return res.status(400).json({
         success: false,
         error: "Invalid price",
-        details: "Price should be a number",
+        details: "Price should be a number greater than 0",
       });
     }
-    // console.log("Parsed Price:", parsedPrice);
-    if (parsedPrice <= 0) {
+
+    const parsedQuantity = parseInt(quantity, 10);
+    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
       return res.status(400).json({
         success: false,
-        error: "Invalid price",
-        details: "Price should be greater than 0",
+        error: "Invalid quantity",
+        details: "Quantity should be a positive integer",
       });
     }
-    // console.log("Parsed Price is valid and greater than 0");
 
-    const refno = razorpay_order_id;
+    const refno = `${razorpay_order_id}-${sku}-${Date.now()}`;
 
-    // const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-
-
-    // Payload
     const payload = {
       address: {
         salutation: "Mr.",
@@ -89,7 +79,7 @@ export const placeOrder = async (req, res) => {
       payments: [
         {
           code: "svc",
-          amount: parsedPrice,
+          amount: parsedPrice * parsedQuantity,
           poNumber: `PO-${Date.now()}`,
         },
       ],
@@ -97,7 +87,7 @@ export const placeOrder = async (req, res) => {
         {
           sku,
           price: parsedPrice,
-          qty: 1,
+          qty: parsedQuantity,
           currency: 356,
           giftMessage: "Enjoy your gift!",
         },
@@ -108,91 +98,60 @@ export const placeOrder = async (req, res) => {
       syncOnly: true,
     };
 
-    // console.log("Payload for Woohoo API:", payload);
-    // console.log("Woohoo Order URL:", woohooOrderUrl);
     const method = "POST";
-    
-    // Generate signature with proper URL handling
     const { signature: generatedSignature, dateAtClient } = signature(
       method,
       woohooOrderUrl,
       payload
     );
-    // console.log("Generated Signature:", generatedSignature);
-    // console.log("Date at Client:", dateAtClient);
 
-    // Make the API request
     const response = await axios.post(woohooOrderUrl, payload, {
       headers: {
         Authorization: `Bearer ${process.env.bearerToken}`,
-        Signature: generatedSignature,  // Ensure "Signature" key is used
-        DateAtClient: dateAtClient,  // Ensure "DateAtClient" key is used
+        Signature: generatedSignature,
+        DateAtClient: dateAtClient,
         "Content-Type": "application/json",
         Accept: "*/*",
       },
     });
 
     const placed = response.data;
-    // console.log("Woohoo API response:", placed);
-    // console.log("stroing in db");
+    const cardList = placed.cards || [];
 
-    // Save to DB
-    const card = placed.cards[0];
-    const payment = placed.payments[0];
-    const recieptdetails = placed.cards[0].recipientDetails;
+    for (const card of cardList) {
+      const payment = placed.payments?.[0] || {};
+      const rec = card.recipientDetails || {};
 
-    console.log("Card details:", recieptdetails.name);
-    console.log("Card details:", recieptdetails.email);
-    console.log("Card details:", recieptdetails.mobileNumber);
-    
+      await WoohooOrder.create({
+        name,
+        email,
+        phone,
+        orderId: placed.orderId,
+        refno: placed.refno,
+        sku: card.sku,
+        productName: card.productName,
+        amount: parseFloat(card.amount),
+        cardNumber: card.cardNumber,
+        cardPin: card.cardPin || "",
+        validity: card.validity,
+        issuanceDate: card.issuanceDate ? new Date(card.issuanceDate) : null,
+        recipientName: rec.name || "",
+        recipientEmail: rec.email || "",
+        recipientPhone: rec.mobileNumber || "",
+        balance: payment.balance || null,
+      });
+    }
 
-    
-    // console.log("Card details:", card);
-    // console.log("Product details:", placed.products[card.sku]);
-
-
-    await WoohooOrder.create({
-
-      name: name,
-      email: email,
-      phone: phone,
-      orderId: placed.orderId,
-      refno: placed.refno,
-      sku: card.sku,
-      productName: card.productName,
-      amount: parseFloat(card.amount),
-      cardNumber: card.cardNumber,
-      cardPin: card.cardPin || "",
-      validity: card.validity ,
-      issuanceDate: card.issuanceDate ? new Date(card.issuanceDate) : null,
-      recipientName: card.recipientDetails?.name || "",
-      recipientEmail: card.recipientDetails?.email || "",
-      recipientPhone: card.recipientDetails?.mobileNumber || "",
-      balance:payment.balance,
-     
-    });
-
-    // console.log("Woohoo API response status:", response.status);
-    // console.log("Woohoo API response headers:", response.headers);
-    console.log("Woohoo API response data:", response.data);
-
-    const result = response.data;
-
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
-      data: result,
+      data: placed,
     });
-
-    console.log("Order created successfully:", result);
-    console.log("Reference No:", refno);
   } catch (error) {
-    console.error("Order creation failed:", error.message);
-    console.error("Error details:", error.response?.data || error.message);
-
-    res.status(error.response?.status || 500).json({
+    console.error("Error placing Woohoo order:", error.message, error.response?.data);
+    return res.status(500).json({
       success: false,
-      error: "Order creation failed",
-      details: error.response?.data || error.message,
+      error: "Internal server error",
+      details: error.message || "Unknown error occurred",
     });
   }
 };
