@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-
 import { FiPlus } from "react-icons/fi";
 import axios from "axios";
 
@@ -16,15 +15,14 @@ interface FormDataType {
   cashback: number;
   category: string;
   details: string;
-  validityMonths: string; // Converted to string in the form
-  amounts: string; // Comma-separated string for input
+  validityMonths: string;
+  amounts: string;
 }
 
-
 interface CardType {
-  _id: string;
+  id: string;
   name: string;
-  image?: string; // Assuming image is a URL or optional
+  image?: string;
   cashback: number;
   category: string;
   details: string;
@@ -42,6 +40,7 @@ const CardAdmin = () => {
     validityMonths: "",
     amounts: "",
   });
+
   const [cards, setCards] = useState<CardType[]>([]);
   const [editingCard, setEditingCard] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -60,12 +59,13 @@ const CardAdmin = () => {
     fetchCards();
   }, []);
 
-  // const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-  //   setFormData({ ...formData, [e.target.name]: e.target.value });
-  // };
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
-  setFormData({ ...formData, [e.target.name]: e.target.value });
-};
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: name === "cashback" ? Number(value) : value,
+    });
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -78,9 +78,9 @@ const CardAdmin = () => {
     try {
       const data = new FormData();
       Object.keys(formData).forEach((key) => {
-        if (key === "image" && !formData.image) return;
-        data.append(key, formData[key as keyof typeof formData] as string | Blob);
-
+        const value = formData[key as keyof typeof formData];
+        if (key === "image" && !value) return;
+        data.append(key, value as string | Blob);
       });
 
       if (editingCard) {
@@ -90,6 +90,7 @@ const CardAdmin = () => {
         await axios.post(`${apiUrl}/api/cards`, data);
         alert(`Card "${formData.name}" added successfully!`);
       }
+
       setFormData({
         name: "",
         image: null,
@@ -99,6 +100,7 @@ const CardAdmin = () => {
         validityMonths: "",
         amounts: "",
       });
+
       setShowForm(false);
       setEditingCard(null);
       fetchCards();
@@ -108,7 +110,7 @@ const CardAdmin = () => {
   };
 
   const handleEdit = (card: CardType) => {
-    setEditingCard(card._id);
+    setEditingCard(card.id);
     setFormData({
       name: card.name,
       image: null,
@@ -120,14 +122,13 @@ const CardAdmin = () => {
     });
     setShowForm(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    // Focus on the name input when editing a card
     setTimeout(() => {
-      const nameInput = document.querySelector('input[name="name"]')as HTMLInputElement | null;
+      const nameInput = document.querySelector('input[name="name"]') as HTMLInputElement | null;
       if (nameInput) nameInput.focus();
-    }, 100); // Small delay to ensure the DOM has updated
+    }, 100);
   };
 
-  const handleDelete = async (id:string, name:string) => {
+  const handleDelete = async (id: string, name: string) => {
     try {
       await axios.delete(`${apiUrl}/api/cards/${id}`);
       alert(`Card "${name}" deleted!`);
@@ -153,7 +154,7 @@ const CardAdmin = () => {
               <input type="file" name="image" className="border p-2 w-full rounded" onChange={handleFileChange} />
               <input type="text" name="cashback" placeholder="Cashback %" className="border p-2 w-full rounded" onChange={handleChange} value={formData.cashback} />
               
-<select name="category" onChange={handleChange} value={formData.category} className="border p-2 w-full rounded">
+              <select name="category" onChange={handleChange} value={formData.category} className="border p-2 w-full rounded">
                 <option value="" disabled>Select a category</option>
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>{cat}</option>
@@ -163,7 +164,7 @@ const CardAdmin = () => {
               <input type="number" name="validityMonths" placeholder="Validity (in months)" className="border p-2 w-full rounded" onChange={handleChange} value={formData.validityMonths} />
               <input type="text" name="amounts" placeholder="Amounts (comma-separated)" className="border p-2 w-full rounded" onChange={handleChange} value={formData.amounts} />
               
-                            <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded-lg">
+              <button type="submit" className="w-full bg-blue-500 text-white p-2 rounded-lg">
                 {editingCard ? "Update Card" : "Add Card"}
               </button>
             </form>
@@ -173,7 +174,7 @@ const CardAdmin = () => {
         <h3 className="text-xl font-bold mt-8">Cards List</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mt-5">
           {cards.map((card) => (
-            <div key={card._id} className="bg-white p-4 rounded-lg shadow-md">
+            <div key={card.id} className="bg-white p-4 rounded-lg shadow-md">
               <img src={`${apiUrl}/uploads/${card.image}`} alt={card.name} className="w-full h-32 object-cover rounded-md" />
               <h4 className="font-bold mt-2">{card.name}</h4>
               <p className="text-sm">Category: {card.category}</p>
@@ -182,7 +183,7 @@ const CardAdmin = () => {
               <p className="text-sm">Amounts: {card.amounts.join(", ")}</p>
               <div className="flex space-x-2 mt-3">
                 <button onClick={() => handleEdit(card)} className="bg-yellow-500 text-white px-3 py-1 rounded">Edit</button>
-                <button onClick={() => handleDelete(card._id, card.name)} className="bg-red-500 text-white px-3 py-1 rounded">Delete</button>
+                <button onClick={() => handleDelete(card.id, card.name)} className="bg-red-500 text-white px-3 py-1 rounded">Delete</button>
               </div>
             </div>
           ))}

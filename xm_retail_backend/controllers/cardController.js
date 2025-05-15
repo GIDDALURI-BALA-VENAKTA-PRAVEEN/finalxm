@@ -13,8 +13,7 @@ export const getCards = async (req, res) => {
   }
 };
 
-
-
+// @desc Create a new card
 export const createCard = async (req, res) => {
   try {
     const { name, cashback, category, details, validityMonths, amounts } = req.body;
@@ -29,7 +28,7 @@ export const createCard = async (req, res) => {
       category,
       details,
       validityMonths,
-      amounts: amounts.split(",").map(a => a.trim()), // Convert to array
+      amounts: amounts.split(",").map((a) => a.trim()),
       image: req.file ? req.file.filename : null,
     });
 
@@ -40,11 +39,10 @@ export const createCard = async (req, res) => {
   }
 };
 
-
 // @desc Update a card
 export const updateCard = async (req, res) => {
   try {
-    const { name, cashback, category, details } = req.body;
+    const { name, cashback, category, details, validityMonths, amounts } = req.body;
     const cardId = req.params.id;
 
     const existingCard = await Card.findByPk(cardId);
@@ -53,25 +51,24 @@ export const updateCard = async (req, res) => {
     }
 
     let updatedImage = existingCard.image;
-    
-    // Check if a new image is uploaded
+
     if (req.file) {
-      // Delete the old image if exists
       if (existingCard.image) {
         const oldImagePath = path.join("uploads", existingCard.image);
         if (fs.existsSync(oldImagePath)) {
           fs.unlinkSync(oldImagePath);
         }
       }
-      updatedImage = req.file.filename; // Set new image
+      updatedImage = req.file.filename;
     }
 
-    // Update the card
     await existingCard.update({
       name,
       cashback,
       category,
       details,
+      validityMonths,
+      amounts: amounts.split(",").map((a) => a.trim()),
       image: updatedImage,
     });
 
@@ -90,7 +87,6 @@ export const deleteCard = async (req, res) => {
       return res.status(404).json({ error: "Card not found" });
     }
 
-    // Delete the image file
     if (card.image) {
       const imagePath = path.join("uploads", card.image);
       if (fs.existsSync(imagePath)) {
@@ -98,20 +94,17 @@ export const deleteCard = async (req, res) => {
       }
     }
 
-    await card.destroy;
-    res.json({ message: "Card deleted" });
+    await card.destroy(); // ✅ FIXED
+    res.json({ message: "Card deleted successfully" });
   } catch (error) {
     console.error("Error deleting card:", error);
     res.status(500).json({ error: "Failed to delete card" });
   }
 };
 
-
-// Fetch cards by category
-
+// @desc Get cards by category
 export const getCardsByCategory = async (req, res) => {
   const { category } = req.params;
-  console.log("Category param:", category); // Debug log
 
   if (!category) {
     return res.status(400).json({ message: "Category parameter is required" });
@@ -130,5 +123,3 @@ export const getCardsByCategory = async (req, res) => {
     });
   }
 };
-
-
